@@ -33,6 +33,6 @@
             "type": "FileCopyMod",
             "sourceFileName": "PinkUtils.json",
             "targetRootedPathAndFileName": "/sdcard/Android/data/com.beatgames.beatsaber/files/mod_cfgs/PinkUtils.json"
-        },
+        }
     ]
 }

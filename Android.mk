@@ -18,36 +18,38 @@ TARGET_ARCH_ABI := $(APP_ABI)
 
 rwildcard=$(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
 
-# Build the modloader shared library
+
+# Creating prebuilt for dependency: modloader - version: 1.0.4
 include $(CLEAR_VARS)
-LOCAL_MODULE	        := modloader
-LOCAL_SRC_FILES         := ./extern/beatsaber-hook/include/libs/libmodloader.so
-LOCAL_EXPORT_C_INCLUDES := ./extern/beatsaber-hook/include/
+LOCAL_MODULE := modloader
+LOCAL_EXPORT_C_INCLUDES := extern/modloader
+LOCAL_SRC_FILES := extern/libmodloader.so
+include $(PREBUILT_SHARED_LIBRARY)
+# Creating prebuilt for dependency: beatsaber-hook - version: 0.8.2
+include $(CLEAR_VARS)
+LOCAL_MODULE := beatsaber-hook_0_8_2
+LOCAL_EXPORT_C_INCLUDES := extern/beatsaber-hook
+LOCAL_SRC_FILES := extern/libbeatsaber-hook_0_8_2.so
+LOCAL_CPP_FEATURES += exceptions
+include $(PREBUILT_SHARED_LIBRARY)
+# Creating prebuilt for dependency: codegen - version: 0.3.5
+include $(CLEAR_VARS)
+LOCAL_MODULE := codegen_0_3_5
+LOCAL_EXPORT_C_INCLUDES := extern/codegen/include
+LOCAL_SRC_FILES := extern/libcodegen_0_3_5.so
+LOCAL_CPP_FEATURES += exceptions
 include $(PREBUILT_SHARED_LIBRARY)
 
-# Build the beatsaber-hook shared library, SPECIFICALLY VERSIONED!
 include $(CLEAR_VARS)
-LOCAL_MODULE	        := beatsaber-hook
-LOCAL_SRC_FILES         := ./libbeatsaber-hook_0_3_3.so
-LOCAL_EXPORT_C_INCLUDES := ./extern/beatsaber-hook/shared/
-include $(PREBUILT_SHARED_LIBRARY)
-
-
-# If you would like to use more shared libraries (such as custom UI, utils, or more) add them here, following the format above.
-# In addition, ensure that you add them to the shared library build below.
-
-include $(CLEAR_VARS)
-# Include shared libraries
+LOCAL_MODULE := pinkutils
+LOCAL_SRC_FILES += $(call rwildcard,src/,*.cpp)
+LOCAL_SRC_FILES += $(call rwildcard,extern/beatsaber-hook/src/inline-hook,*.cpp)
+LOCAL_SRC_FILES += $(call rwildcard,extern/beatsaber-hook/src/inline-hook,*.c)
 LOCAL_SHARED_LIBRARIES += modloader
-LOCAL_SHARED_LIBRARIES += beatsaber-hook
-LOCAL_LDLIBS     := -llog
-LOCAL_CFLAGS     := -I"C:\Program Files\Unity\Editor\Data\il2cpp\libil2cpp"
-LOCAL_MODULE     := PinkUtils
-LOCAL_CPPFLAGS   := -std=c++2a
-LOCAL_C_INCLUDES := ./include ./src
-LOCAL_SRC_FILES  += $(call rwildcard,src/,*.cpp)
-# At the moment, these files must be built within the mod to avoid recursive trampoline invokes.
-# This will be fixed in a future version.
-LOCAL_SRC_FILES  += $(call rwildcard,extern/beatsaber-hook/src/inline-hook,*.cpp)
-LOCAL_SRC_FILES  += $(call rwildcard,extern/beatsaber-hook/src/inline-hook,*.c)
+LOCAL_SHARED_LIBRARIES += beatsaber-hook_0_8_2
+LOCAL_SHARED_LIBRARIES += codegen_0_3_5
+LOCAL_LDLIBS += -llog
+LOCAL_CFLAGS += -isystem"./extern/libil2cpp/il2cpp/libil2cpp" -isystem"extern"
+LOCAL_CPPFLAGS += -std=c++2a
+LOCAL_C_INCLUDES += ./include ./src
 include $(BUILD_SHARED_LIBRARY)

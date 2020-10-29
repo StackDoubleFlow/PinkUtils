@@ -7,17 +7,26 @@
 #include <fstream>
 #include <algorithm>
 
-#include "../extern/beatsaber-hook/rapidjson/include/rapidjson/document.h"
-#include "../extern/beatsaber-hook/shared/utils/utils.h"
-#include "../extern/beatsaber-hook/shared/utils/logging.hpp"
-#include "../extern/beatsaber-hook/include/modloader.hpp"
-#include "../extern/beatsaber-hook/shared/utils/typedefs.h"
-#include "../extern/beatsaber-hook/shared/utils/il2cpp-utils.hpp"
-#include "../extern/beatsaber-hook/shared/utils/il2cpp-functions.hpp"
-#include "../extern/beatsaber-hook/shared/config/config-utils.hpp"
+#include "modloader/shared/modloader.hpp"
+#include "beatsaber-hook/shared/rapidjson/include/rapidjson/document.h"
+#include "beatsaber-hook/shared/utils/utils.h"
+#include "beatsaber-hook/shared/utils/logging.hpp"
+#include "beatsaber-hook/shared/utils/typedefs.h"
+#include "beatsaber-hook/shared/utils/il2cpp-utils.hpp"
+#include "beatsaber-hook/shared/utils/il2cpp-functions.hpp"
+#include "beatsaber-hook/shared/config/config-utils.hpp"
+
+#include "UnityEngine/Networking/DownloadHandler.hpp"
+#include "UnityEngine/Networking/UnityWebRequest.hpp"
+#include "UnityEngine/Networking/UnityWebRequestAsyncOperation.hpp"
+#include "UnityEngine/AsyncOperation.hpp"
+#include "System/Action_1.hpp"
 
 #define PATH "/sdcard/Android/data/com.beatgames.beatsaber/files/logdump-"
 #define EXT ".txt"
+
+using namespace UnityEngine::Networking;
+using namespace UnityEngine;
 
 bool burnMarkTrailsEnabled = true;
 //bool debugMode = true;
@@ -40,10 +49,10 @@ std::string ExpertPlus = "";
 std::string lastPhysicallySelectedCharacteristic = "";
 
 Il2CppObject *textPageScrollView = nullptr;
-Il2CppObject *WebRequestAPI = nullptr;
-Il2CppObject *DownloadHandler = nullptr;
-Il2CppObject *WebRequestAsyncOp = nullptr;
-Il2CppString *JsonStr = nullptr;
+UnityWebRequest *webRequestAPI = nullptr;
+DownloadHandler *downloadHandler = nullptr;
+UnityWebRequestAsyncOperation *webRequestAsyncOp = nullptr;
+Il2CppString *jsonStr = nullptr;
 std::string modVersion = "1.2.2";
 Il2CppObject *releaseInfoViewController = nullptr;
 
@@ -90,11 +99,11 @@ float getValue(int rgb, int shift) {
 
 std::string text = "<size=6><mspace=3.5><align=\"center\">NO INTERNET</align></mspace></size><br><color=#88202088>Error</color><br>-<indent=3>The NoticeBoard Part Of PinkUtils Reqires an Internet Connection to Function</indent>";
 
-void CompletedWebRequest()
+void CompletedWebRequest(AsyncOperation *operation)
 {
-	DownloadHandler = RET_V_UNLESS(il2cpp_utils::RunMethod(WebRequestAPI, "get_downloadHandler"));
-	JsonStr = RET_V_UNLESS(il2cpp_utils::RunMethod<Il2CppString*>(DownloadHandler, "GetText"));
-	std::string requestCompleteText = to_utf8(csstrtostr(JsonStr));
+	downloadHandler = webRequestAPI->get_downloadHandler();
+	jsonStr = downloadHandler->GetText();
+	std::string requestCompleteText = to_utf8(csstrtostr(jsonStr));
 	text = requestCompleteText;
 	if (text.empty()) {
 		text = "<size=6><mspace=3.5><align=\"center\">NO INTERNET</align></mspace></size><br><color=#88202088>Error</color><br>-<indent=3>The NoticeBoard Part Of PinkUtils Reqires an Internet Connection to Function</indent>";
@@ -107,12 +116,15 @@ void CompletedWebRequest()
 
 void WebRequest() {
 	Il2CppString *urlPath = il2cpp_utils::createcsstr("http://www.questboard.xyz/vrnews.php/" + modVersion);
-	WebRequestAPI = RET_V_UNLESS(il2cpp_utils::RunMethod("UnityEngine.Networking", "UnityWebRequest", "Get", urlPath));
-	RET_V_UNLESS(il2cpp_utils::RunMethod(WebRequestAPI, "SetRequestHeader", il2cpp_utils::createcsstr("User-Agent"), il2cpp_utils::createcsstr("PPViewer/")));
-	WebRequestAsyncOp = RET_V_UNLESS(il2cpp_utils::RunMethod(WebRequestAPI, "SendWebRequest"));
-	auto* methodInfo = RET_V_UNLESS(il2cpp_utils::FindMethodUnsafe(WebRequestAsyncOp, "add_completed", 1));
-	auto action = RET_V_UNLESS(il2cpp_utils::MakeAction(methodInfo, 0, nullptr, CompletedWebRequest));
-	RET_V_UNLESS(il2cpp_utils::RunMethod(WebRequestAsyncOp, methodInfo, action));
+	webRequestAPI = UnityWebRequest::Get(urlPath);
+	webRequestAPI->SetRequestHeader(il2cpp_utils::createcsstr("User-Agent"), il2cpp_utils::createcsstr("PPViewer/"));
+	webRequestAsyncOp = webRequestAPI->SendWebRequest();
+
+	auto action = il2cpp_utils::MakeAction<System::Action_1<AsyncOperation*>*, AsyncOperation*>(CompletedWebRequest);
+	// auto* methodInfo = RET_V_UNLESS(il2cpp_utils::FindMethodUnsafe(webRequestAsyncOp, "add_completed", 1));
+	// auto action = RET_V_UNLESS(il2cpp_utils::MakeAction(methodInfo, 0, nullptr, CompletedWebRequest));
+	webRequestAsyncOp->add_completed(action);
+	// RET_V_UNLESS(il2cpp_utils::RunMethod(WebRequestAsyncOp, methodInfo, action));
 }
 
 MAKE_HOOK_OFFSETLESS(FlowCoordinator_ProvideInitialViewControllers, void, Il2CppObject *self, Il2CppObject *mainViewController, Il2CppObject *leftScreenViewController, Il2CppObject *rightScreenViewController, Il2CppObject *bottomScreenViewController, Il2CppObject *topScreenViewController) {
